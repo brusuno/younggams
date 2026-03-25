@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>은솔마린 | 실시간 바다낚시 예약</title>
+    <meta name="description" content="은솔마린 바다낚시 실시간 예약 페이지" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="hero">
+      <div class="hero__overlay"></div>
+      <div class="hero__content">
+        <p class="tag">EUNSOL MARINE</p>
+        <h1>은솔마린 실시간 예약</h1>
+        <p class="subtitle">킹콩낚시 스타일로 날짜별 캘린더에서 정원/예약현황을 바로 확인하세요.</p>
+        <div class="hero__chips">
+          <span>캘린더 예약현황</span>
+          <span>실시간 좌석 반영</span>
+          <span>모바일 최적화</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="container">
+      <section class="panel panel--calendar">
+        <div class="panel__header panel__header--row">
+          <div>
+            <h2>예약 캘린더</h2>
+            <p>날짜별 총 정원과 예약 현황을 확인하고 날짜를 선택하세요.</p>
+          </div>
+          <div class="month-nav">
+            <button id="prevMonthBtn" type="button" class="month-btn">◀</button>
+            <strong id="monthLabel"></strong>
+            <button id="nextMonthBtn" type="button" class="month-btn">▶</button>
+          </div>
+        </div>
+        <div class="calendar-head" id="calendarHead"></div>
+        <div class="calendar-grid" id="calendarGrid" aria-live="polite"></div>
+      </section>
+
+      <section class="panel panel--status">
+        <div class="panel__header">
+          <h2>선택 날짜 회차 현황</h2>
+          <p>선택한 날짜의 회차별 잔여 좌석을 확인하세요.</p>
+        </div>
+        <div class="filters">
+          <label>
+            예약 날짜
+            <input type="date" id="bookingDate" />
+          </label>
+        </div>
+        <div id="slots" class="slots" aria-live="polite"></div>
+      </section>
+
+      <section class="panel panel--booking">
+        <div class="panel__header">
+          <h2>빠른 예약</h2>
+          <p>필수 정보만 입력하면 즉시 예약됩니다.</p>
+        </div>
+        <form id="bookingForm" class="booking-form">
+          <label>
+            예약자 이름
+            <input type="text" id="customerName" required placeholder="홍길동" />
+          </label>
+          <label>
+            연락처
+            <input type="tel" id="customerPhone" required placeholder="010-1234-5678" />
+          </label>
+          <label>
+            회차
+            <select id="tripSelect" required>
+              <option value="">회차를 선택하세요</option>
+            </select>
+          </label>
+          <label>
+            인원
+            <input type="number" id="guestCount" min="1" max="6" value="1" required />
+          </label>
+          <button type="submit">은솔마린 예약하기</button>
+        </form>
+        <p id="message" class="message"></p>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <p>© 은솔마린 · 실시간 예약 시스템</p>
+    </footer>
+
+    <template id="slotTemplate">
+      <article class="slot-card">
+        <div>
+          <h3 class="slot-title"></h3>
+          <p class="slot-time"></p>
+        </div>
+        <div class="seat-box">
+          <p class="seat-count"></p>
+          <span class="seat-status"></span>
+        </div>
+      </article>
+    </template>
+
+    <script src="app.js" defer></script>
+  </body>
+</html>
