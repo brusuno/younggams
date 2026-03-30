@@ -9,8 +9,8 @@
 - 게시판 페이지(조업현황/공지사항): `/board.html`
 
 ## 핵심 기능
-- 월간 캘린더에서 날짜별 정원/예약/잔여 현황 조회
-- 날짜/회차별 잔여 좌석 조회 및 즉시 예약
+- 배별(은솔 1호/2호)로 분리된 월간 캘린더 정원/예약/잔여 현황 조회
+- 배별/날짜/회차별 잔여 좌석 조회 및 즉시 예약
 - 조업현황 게시판 등록/조회
 - 공지사항 게시판 등록/조회
 - SQLite 기반 데이터 저장
@@ -28,9 +28,9 @@ python3 server.py
 
 ## API
 - `GET /api/config`
-- `GET /api/availability?date=YYYY-MM-DD`
-- `GET /api/calendar?month=YYYY-MM`
-- `POST /api/bookings`
+- `GET /api/availability?date=YYYY-MM-DD&boatId=<boat-id>`
+- `GET /api/calendar?month=YYYY-MM&boatId=<boat-id>`
+- `POST /api/bookings` (`boatId` 포함)
 - `GET /api/posts?board=catch|notice`
 - `POST /api/posts`
 

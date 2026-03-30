@@ -7,12 +7,17 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
 PORT = int(os.environ.get('PORT', '4173'))
-MAX_SEATS = 22
 TRIPS = [
     {'id': 'dawn', 'name': '새벽 출항', 'time': '05:30 ~ 11:30'},
     {'id': 'day', 'name': '오전 출항', 'time': '09:00 ~ 15:00'},
     {'id': 'sunset', 'name': '오후 출항', 'time': '13:30 ~ 19:30'},
 ]
+BOATS = [
+    {'id': 'eunsol-1', 'name': '은솔 1호', 'maxSeats': 22},
+    {'id': 'eunsol-2', 'name': '은솔 2호', 'maxSeats': 18},
+]
+DEFAULT_BOAT_ID = BOATS[0]['id']
+BOAT_BY_ID = {boat['id']: boat for boat in BOATS}
 BOARDS = {'catch', 'notice'}
 DB_PATH = os.path.join(os.path.dirname(__file__), 'booking.db')
 
@@ -21,6 +26,13 @@ def get_conn():
     conn = sqlite3.connect(DB_PATH, isolation_level=None)
     conn.row_factory = sqlite3.Row
     return conn
+
+
+def ensure_booking_boat_column(conn):
+    columns = conn.execute('PRAGMA table_info(bookings)').fetchall()
+    names = {column['name'] for column in columns}
+    if 'boat_id' not in names:
+        conn.execute(f"ALTER TABLE bookings ADD COLUMN boat_id TEXT NOT NULL DEFAULT '{DEFAULT_BOAT_ID}'")
 
 
 def init_db():
@@ -34,10 +46,13 @@ def init_db():
                 customer_name TEXT NOT NULL,
                 customer_phone TEXT NOT NULL,
                 guest_count INTEGER NOT NULL CHECK (guest_count > 0),
-                created_at TEXT NOT NULL
+                created_at TEXT NOT NULL,
+                boat_id TEXT NOT NULL DEFAULT 'eunsol-1'
             )
             '''
         )
+        ensure_booking_boat_column(conn)
+
         conn.execute(
             '''
             CREATE TABLE IF NOT EXISTS posts (
@@ -68,38 +83,40 @@ def is_valid_month(month_text):
         return False
 
 
-def get_availability(conn, booking_date):
+def get_availability(conn, booking_date, boat_id):
+    boat = BOAT_BY_ID[boat_id]
     rows = conn.execute(
         '''
         SELECT trip_id, COALESCE(SUM(guest_count), 0) AS reserved
         FROM bookings
-        WHERE booking_date = ?
+        WHERE booking_date = ? AND boat_id = ?
         GROUP BY trip_id
         ''',
-        (booking_date,),
+        (booking_date, boat_id),
     ).fetchall()
     reserved_by_trip = {row['trip_id']: int(row['reserved']) for row in rows}
 
     slots = []
     for trip in TRIPS:
         reserved = reserved_by_trip.get(trip['id'], 0)
-        slots.append({**trip, 'maxSeats': MAX_SEATS, 'reserved': reserved, 'remaining': max(0, MAX_SEATS - reserved)})
+        slots.append({**trip, 'maxSeats': boat['maxSeats'], 'reserved': reserved, 'remaining': max(0, boat['maxSeats'] - reserved)})
     return slots
 
 
-def get_month_summary(conn, month_text):
+def get_month_summary(conn, month_text, boat_id):
     rows = conn.execute(
         '''
         SELECT booking_date, COALESCE(SUM(guest_count), 0) AS reserved
         FROM bookings
-        WHERE booking_date LIKE ?
+        WHERE booking_date LIKE ? AND boat_id = ?
         GROUP BY booking_date
         ''',
-        (f'{month_text}-%',),
+        (f'{month_text}-%', boat_id),
     ).fetchall()
 
     days = {}
-    total_capacity = MAX_SEATS * len(TRIPS)
+    boat = BOAT_BY_ID[boat_id]
+    total_capacity = boat['maxSeats'] * len(TRIPS)
     for row in rows:
         reserved = int(row['reserved'])
         days[row['booking_date']] = {'reserved': reserved, 'capacity': total_capacity, 'remaining': max(0, total_capacity - reserved)}
@@ -152,29 +169,35 @@ class Handler(SimpleHTTPRequestHandler):
             return self._send_json({'ok': True, 'service': 'eunsol-marine'})
 
         if parsed.path == '/api/config':
-            return self._send_json({'siteName': '은솔마린', 'trips': TRIPS, 'maxSeats': MAX_SEATS})
+            return self._send_json({'siteName': '은솔마린', 'trips': TRIPS, 'boats': BOATS})
 
         if parsed.path == '/api/availability':
             qs = parse_qs(parsed.query)
             booking_date = qs.get('date', [None])[0]
+            boat_id = qs.get('boatId', [DEFAULT_BOAT_ID])[0]
             if not booking_date:
                 return self._send_json({'message': 'date 쿼리가 필요합니다.'}, HTTPStatus.BAD_REQUEST)
             if not is_valid_date(booking_date):
                 return self._send_json({'message': 'date 형식은 YYYY-MM-DD 이어야 합니다.'}, HTTPStatus.BAD_REQUEST)
+            if boat_id not in BOAT_BY_ID:
+                return self._send_json({'message': '유효하지 않은 배입니다.'}, HTTPStatus.BAD_REQUEST)
             with get_conn() as conn:
-                slots = get_availability(conn, booking_date)
-            return self._send_json({'date': booking_date, 'slots': slots})
+                slots = get_availability(conn, booking_date, boat_id)
+            return self._send_json({'date': booking_date, 'boatId': boat_id, 'slots': slots})
 
         if parsed.path == '/api/calendar':
             qs = parse_qs(parsed.query)
             month = qs.get('month', [None])[0]
+            boat_id = qs.get('boatId', [DEFAULT_BOAT_ID])[0]
             if not month:
                 return self._send_json({'message': 'month 쿼리가 필요합니다.'}, HTTPStatus.BAD_REQUEST)
             if not is_valid_month(month):
                 return self._send_json({'message': 'month 형식은 YYYY-MM 이어야 합니다.'}, HTTPStatus.BAD_REQUEST)
+            if boat_id not in BOAT_BY_ID:
+                return self._send_json({'message': '유효하지 않은 배입니다.'}, HTTPStatus.BAD_REQUEST)
             with get_conn() as conn:
-                days = get_month_summary(conn, month)
-            return self._send_json({'month': month, 'days': days})
+                days = get_month_summary(conn, month, boat_id)
+            return self._send_json({'month': month, 'boatId': boat_id, 'days': days})
 
         if parsed.path == '/api/posts':
             qs = parse_qs(parsed.query)
@@ -205,6 +228,7 @@ class Handler(SimpleHTTPRequestHandler):
 
         booking_date = payload.get('bookingDate')
         trip_id = payload.get('tripId')
+        boat_id = payload.get('boatId') or DEFAULT_BOAT_ID
         customer_name = (payload.get('customerName') or '').strip()
         customer_phone = (payload.get('customerPhone') or '').strip()
         guest_count = payload.get('guestCount')
@@ -221,21 +245,23 @@ class Handler(SimpleHTTPRequestHandler):
             return self._send_json({'message': '예약 인원은 1~6명 사이여야 합니다.'}, HTTPStatus.BAD_REQUEST)
         if trip_id not in {trip['id'] for trip in TRIPS}:
             return self._send_json({'message': '존재하지 않는 회차입니다.'}, HTTPStatus.BAD_REQUEST)
+        if boat_id not in BOAT_BY_ID:
+            return self._send_json({'message': '유효하지 않은 배입니다.'}, HTTPStatus.BAD_REQUEST)
 
         now = datetime.utcnow().isoformat(timespec='seconds')
         with get_conn() as conn:
             conn.execute('BEGIN IMMEDIATE')
-            slots = get_availability(conn, booking_date)
+            slots = get_availability(conn, booking_date, boat_id)
             selected = next((slot for slot in slots if slot['id'] == trip_id), None)
             if not selected or selected['remaining'] < guest_count:
                 conn.execute('ROLLBACK')
                 return self._send_json({'message': '잔여 좌석이 부족합니다.'}, HTTPStatus.CONFLICT)
             conn.execute(
                 '''
-                INSERT INTO bookings (booking_date, trip_id, customer_name, customer_phone, guest_count, created_at)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO bookings (booking_date, trip_id, customer_name, customer_phone, guest_count, created_at, boat_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
                 ''',
-                (booking_date, trip_id, customer_name, customer_phone, guest_count, now),
+                (booking_date, trip_id, customer_name, customer_phone, guest_count, now, boat_id),
             )
             conn.execute('COMMIT')
         return self._send_json({'message': '예약이 완료되었습니다.'}, HTTPStatus.CREATED)

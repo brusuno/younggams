@@ -123,6 +123,8 @@ h1 { margin: 0.65rem 0; font-size: clamp(2rem, 4vw, 3rem); }
 .muted { color:#60778f; }
 
 .filters { margin-bottom:1rem; }
+.filters--double { display: grid; grid-template-columns: 1fr 1fr; gap: .7rem; }
+
 label { display:grid; gap:.45rem; color:#2f4560; font-size:.92rem; font-weight:600; }
 input, select, button, textarea { width:100%; border-radius:11px; border:1px solid var(--line); padding:.78rem; font-size:1rem; font-family: inherit; }
 input:focus, select:focus, textarea:focus { border-color:#6aa1ee; outline:none; box-shadow:0 0 0 4px rgba(52,132,238,.16); }
@@ -150,6 +152,7 @@ button:hover { filter:brightness(1.05); }
   .container { grid-template-columns: 1fr; margin-top: -1.2rem; }
   .panel--booking { grid-column: auto; }
   .calendar-day { min-height: 92px; }
+  .filters--double { grid-template-columns: 1fr; }
 }
 
 .month-btn, .tab-btn { background:#fff; color:var(--text); border:1px solid var(--line); }
