@@ -1,2 +1,5 @@
 node_modules/
 booking.db
+backups/
+notifications.log
+__pycache__/

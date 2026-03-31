@@ -3,6 +3,8 @@ const boatSelect = document.querySelector('#boatSelect');
 const slotsContainer = document.querySelector('#slots');
 const tripSelect = document.querySelector('#tripSelect');
 const bookingForm = document.querySelector('#bookingForm');
+const sendCodeBtn = document.querySelector('#sendCodeBtn');
+const verifyCodeBtn = document.querySelector('#verifyCodeBtn');
 const message = document.querySelector('#message');
 const slotTemplate = document.querySelector('#slotTemplate');
 const monthLabel = document.querySelector('#monthLabel');
@@ -19,6 +21,7 @@ let selectedBoatId = '';
 let pollTimer;
 let currentMonth;
 let calendarSummary = {};
+let verifyToken = '';
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
@@ -195,13 +198,15 @@ async function reserveSeats(event) {
     await fetchJSON('/api/bookings', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ bookingDate, boatId: selectedBoatId, tripId, customerName, customerPhone, guestCount }),
+      body: JSON.stringify({ bookingDate, boatId: selectedBoatId, tripId, customerName, customerPhone, guestCount, verifyToken }),
     });
 
     setMessage(`${customerName}님 예약이 완료되었습니다. (${guestCount}명)`, true);
     bookingForm.reset();
     tripSelect.value = '';
     document.querySelector('#guestCount').value = '1';
+    verifyToken = '';
+    document.querySelector('#smsCode').value = '';
     await Promise.all([loadAvailability(), loadCalendarSummary()]);
   } catch (error) {
     setMessage(error.message);
@@ -243,6 +248,45 @@ dateInput.addEventListener('change', async () => {
   await loadAvailability();
   renderCalendar();
   startPolling();
+});
+
+
+sendCodeBtn.addEventListener('click', async () => {
+  const phone = document.querySelector('#customerPhone').value.trim();
+  if (!phone) {
+    setMessage('연락처를 먼저 입력해주세요.');
+    return;
+  }
+  try {
+    await fetchJSON('/api/auth/send-code', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone }),
+    });
+    setMessage('인증코드를 발송했습니다. (개발모드: notifications.log 확인)', true);
+  } catch (error) {
+    setMessage(error.message);
+  }
+});
+
+verifyCodeBtn.addEventListener('click', async () => {
+  const phone = document.querySelector('#customerPhone').value.trim();
+  const code = document.querySelector('#smsCode').value.trim();
+  if (!phone || !code) {
+    setMessage('연락처와 인증코드를 입력해주세요.');
+    return;
+  }
+  try {
+    const result = await fetchJSON('/api/auth/verify-code', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone, code }),
+    });
+    verifyToken = result.verifyToken;
+    setMessage('휴대폰 인증이 완료되었습니다.', true);
+  } catch (error) {
+    setMessage(error.message);
+  }
 });
 
 bookingForm.addEventListener('submit', reserveSeats);

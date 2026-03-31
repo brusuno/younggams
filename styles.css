@@ -158,3 +158,7 @@ button:hover { filter:brightness(1.05); }
 .month-btn, .tab-btn { background:#fff; color:var(--text); border:1px solid var(--line); }
 .tab-btn.active { background: var(--primary); color:#fff; border-color: var(--primary); }
 
+
+.verify-row { display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap:.6rem; align-items:center; margin:.4rem 0; }
+pre { white-space: pre-wrap; }
+

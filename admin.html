@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>은솔마린 | 관리자</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="logo" href="/">은솔마린</a>
+      <nav class="top-nav"><a href="/admin.html" class="active">관리자</a></nav>
+    </header>
+
+    <main class="simple-wrap">
+      <h1>관리자 페이지</h1>
+      <section class="panel">
+        <div class="filters filters--double">
+          <label>관리자 키 <input type="password" id="adminKey" placeholder="ADMIN_KEY" /></label>
+          <label>예약 날짜 <input type="date" id="adminDate" /></label>
+        </div>
+        <div class="verify-row">
+          <button id="loadBookingsBtn" type="button">예약 조회</button>
+          <button id="backupBtn" type="button">DB 백업</button>
+          <button id="metricsBtn" type="button">모니터링 조회</button>
+        </div>
+        <p id="adminMessage" class="message"></p>
+      </section>
+
+      <section class="panel">
+        <h2>예약 목록 (변경/취소)</h2>
+        <div id="bookingAdminList" class="post-list"></div>
+      </section>
+
+      <section class="panel">
+        <h2>모니터링</h2>
+        <pre id="metricsBox" class="post-card"></pre>
+      </section>
+    </main>
+
+    <script src="admin.js" defer></script>
+  </body>
+</html>
